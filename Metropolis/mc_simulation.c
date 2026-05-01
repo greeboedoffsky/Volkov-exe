@@ -4,30 +4,27 @@
 #include <math.h>
 #include <stdbool.h>
 
-// Константы
+
 const int    N       = 1000;
-const double L       = 84.0;   // сохраняем ту же плотность ρ ≈ 0.00169 Å⁻³
+const double L       = 84.0;  
 const double EPSILON = 120.0;
 const double SIGMA   = 3.4;
 const double T       = 94.4;
 const long   STEPS   = 10000;
 
-// Глобальный массив координат
+
 double coordinates[1000][3];
 
-// Случайное число [0, 1)
 double get_random() {
     return rand() / (double)RAND_MAX;
 }
 
-// Потенциал Леннард-Джонса
 double lj_potential(double r) {
     double sr6  = pow(SIGMA / r, 6);
     double sr12 = sr6 * sr6;
     return 4.0 * EPSILON * (sr12 - sr6);
 }
 
-// Расстояние по методу ближайшего образа (PBC)
 double r_min_dist(double x0, double y0, double z0,
                   double x1, double y1, double z1) {
     double dx = fabs(x1 - x0);
@@ -41,18 +38,16 @@ double r_min_dist(double x0, double y0, double z0,
     return sqrt(dx*dx + dy*dy + dz*dz);
 }
 
-// Потенциальная энергия частицы i в позиции (x0, y0, z0)
-// ИСПРАВЛЕНО: break → continue, чтобы считались все пары
 double potential_energy(int i, double x0, double y0, double z0) {
     double energy = 0.0;
     for (int j = 0; j < N; j++) {
-        if (i == j) continue;   // ← было break (критический баг)
+        if (i == j) continue;   
 
         double r = r_min_dist(x0, y0, z0,
                               coordinates[j][0],
                               coordinates[j][1],
                               coordinates[j][2]);
-        // Защита от r → 0 (взрыв энергии)
+        
         if (r < 0.5) continue;
 
         energy += lj_potential(r);
@@ -60,15 +55,13 @@ double potential_energy(int i, double x0, double y0, double z0) {
     return energy;
 }
 
-// Вероятность принятия по критерию Метрополиса
-// ИСПРАВЛЕНО: правильный знак ΔE = E_new - E_old
+
 double probability(double E_old, double E_new) {
     double dE = E_new - E_old;
-    if (dE < 0.0) return 1.0;          // новое состояние выгоднее — принимаем всегда
-    return exp(-dE / T);               // иначе — с вероятностью Больцмана
+    if (dE < 0.0) return 1.0;         
+    return exp(-dE / T);               
 }
 
-// Периодические граничные условия
 double apply_pbc(double x) {
     if (x >  L) x -= L;
     if (x <  0) x += L;
@@ -76,20 +69,19 @@ double apply_pbc(double x) {
 }
 
 int main(void) {
-    double step_size = 0.4;   // максимальное смещение частицы
-    int    freq      = N;     // частота записи в файл
-    long   accepted  = 0;     // счётчик принятых шагов (был cnt, никогда не рос)
+    double step_size = 0.4;   
+    int    freq      = N;     
+    long   accepted  = 0;     
 
     srand((unsigned int)time(NULL));
 
-    // Начальная расстановка частиц случайно
     for (int i = 0; i < N; i++) {
         coordinates[i][0] = L * get_random();
         coordinates[i][1] = L * get_random();
         coordinates[i][2] = L * get_random();
     }
 
-    // Вывод начальной конфигурации
+    
     printf("%d\n", N);
     printf("Начальная конфигурация:\n");
     for (int i = 0; i < N; i++) {
@@ -101,12 +93,12 @@ int main(void) {
     }
 
     FILE *f = fopen("lg.xyz", "w");
-    if (!f) {                           // проверка открытия файла
+    if (!f) {                           
         fprintf(stderr, "Ошибка: не удалось открыть lg.xyz\n");
         return 1;
     }
 
-    // ─── Основной цикл Монте-Карло ───────────────────────────────────────────
+    
     for (long step = 0; step < STEPS; step++) {
 
         // Случайная частица
@@ -132,11 +124,9 @@ int main(void) {
             coordinates[n][0] = x1;
             coordinates[n][1] = y1;
             coordinates[n][2] = z1;
-            accepted++;                 // ИСПРАВЛЕНО: счётчик теперь растёт
+            accepted++;                 
         }
-        // ИСПРАВЛЕНО: убран else { break; } — симуляция больше не обрывается
-
-        // Лог в консоль и запись в файл каждый шаг
+       
         printf("\n--- Шаг № %d ---\n", (int)step);
         printf("Выбрана частица № %d\n", n + 1);
         printf("Было: %.4f %.4f %.4f\n", x0, y0, z0);
@@ -153,7 +143,7 @@ int main(void) {
             }
         }
     }
-    // ─────────────────────────────────────────────────────────────────────────
+    
 
     printf("\n=== Симуляция завершена ===\n");
     printf("Всего шагов:    %ld\n", STEPS);
